@@ -1,0 +1,164 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -360,
+        0
+      ],
+      "id": "4fc58fa7-d15e-4a1b-9b7b-af7e68cf3694",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "902ab2f3-e271-4916-87a8-0084a472e338",
+              "name": "data",
+              "value": "# 🌟 Apresentação com Marp\n\n## Subtítulo ou Introdução\n\n---\n\n## 🎯 Objetivos\n\n- Explicar o que é o Marp\n- Mostrar como criar slides em Markdown\n- Apresentar um exemplo prático\n\n---\n\n## 🧠 O que é Marp?\n\n- Marp = Markdown Presentation\n- Transforma arquivos `.md` em apresentações\n- Compatível com VS Code (extensão oficial)\n- Exporta para PDF, HTML e PPTX\n\n---\n\n## 🛠️ Estrutura Básica\n\n```markdown\n---\nmarp: true\ntheme: default\npaginate: true\n---\n\n# Título do Slide\n\nConteúdo aqui",
+              "type": "string"
+            },
+            {
+              "id": "d3f37e85-a7a6-40cd-9220-a92d3e26f17e",
+              "name": "fileName",
+              "value": "={{ $now.toMillis() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        0
+      ],
+      "id": "5955751a-b441-4789-8cc5-9685ea77cb35",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "9b8ccdf8-99a6-4d9e-9b7e-b4297882abb3",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/markdown/{{ $('Edit Fields').item.json.fileName }}.md",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        540,
+        0
+      ],
+      "id": "930d7ac3-8af7-4a64-b2b0-1c88ae5cb760",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "command": "mkdir /home/node/markdown && mkdir /home/node/pdf"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        0
+      ],
+      "id": "0f4684e7-ab38-476b-9426-7a11979ad748",
+      "name": "Execute Command",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "command": "=marp /home/node/markdown/{{ $('Edit Fields').item.json.fileName }}.md --pdf -o /home/node/pdf/{{ $('Edit Fields').item.json.fileName }}.pdf"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        740,
+        0
+      ],
+      "id": "d7243145-b7b6-4d5b-9a76-4e3566b34bf0",
+      "name": "Execute Command1",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "1ba41608c44c285a1fbb158dec8744857d4b5f9672d9a9dba8a9dab889f6bf6e"
+  }
+}
