@@ -1,4 +1,4 @@
-FROM n8nio/n8n:latest
+FROM node:18-alpine
 
 USER root
 
@@ -23,10 +23,24 @@ ENV NODE_OPTIONS="--max-old-space-size=8192"
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV DEBUG="marp-cli:*"
 
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install app dependencies
+RUN npm install
+
+# Copy app source
+COPY . .
+
 # Create necessary directories
-RUN mkdir -p /home/node/markdown /home/node/pdf && \
-    chown -R node:node /home/node/markdown /home/node/pdf
+RUN mkdir -p /tmp/markdown /tmp/pdf && \
+    chown -R node:node /tmp/markdown /tmp/pdf /usr/src/app
 
-VOLUME /home/node/.n8n
+USER node
 
-EXPOSE 5678
+EXPOSE 3000
+
+CMD [ "node", "server.js" ] 

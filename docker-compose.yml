@@ -1,24 +1,12 @@
 services:
-  n8n-custom:
+  markdown-pdf:
     build: .
     ports:
-      - "5678:5678"
+      - "3000:3000"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin123
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - TZ=America/Sao_Paulo
-      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-      - CHROME_PATH=/usr/bin/chromium-browser
-    volumes:
-      - n8n_data:/home/node/.n8n
+      - NODE_ENV=production
     security_opt:
       - seccomp=unconfined
     cap_add:
       - SYS_ADMIN
     restart: unless-stopped
-
-volumes:
-  n8n_data:
