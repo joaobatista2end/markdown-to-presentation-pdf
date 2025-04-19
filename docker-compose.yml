@@ -2,7 +2,7 @@ services:
   markdown-pdf:
     build: .
     ports:
-      - "3033:3000"
+      - "4444:3000"
     environment:
       - NODE_ENV=production
     security_opt:
