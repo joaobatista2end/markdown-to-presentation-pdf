@@ -10,8 +10,10 @@ RUN apk add --no-cache \
     font-noto-extra \
     && rm -rf /var/cache/apk/*
 
-# Install Marp CLI and its dependencies
-RUN npm install -g @marp-team/marp-cli @marp-team/marp-core
+# Install Marp CLI and its dependencies with specific versions
+RUN npm install -g \
+    @marp-team/marp-core@3.6.0 \
+    @marp-team/marp-cli@2.4.0
 
 # Set Chrome path and flags for Marp with increased timeout and memory settings
 ENV CHROME_PATH=/usr/bin/chromium-browser
@@ -26,7 +28,5 @@ RUN mkdir -p /home/node/markdown /home/node/pdf && \
     chown -R node:node /home/node/markdown /home/node/pdf
 
 VOLUME /home/node/.n8n
-
-USER node
 
 EXPOSE 5678
