@@ -13,8 +13,9 @@ RUN apk add --no-cache \
 # Install Marp CLI
 RUN npm i -g @marp-team/marp-cli@0.5.0
 
-# Set Chrome path for Marp
+# Set Chrome path and flags for Marp
 ENV CHROME_PATH=/usr/bin/chromium-browser
+ENV CHROME_LAUNCH_OPTIONS="--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox"
 
 VOLUME /home/node/.n8n
 
