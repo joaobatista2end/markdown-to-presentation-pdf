@@ -1,56 +1,69 @@
 const express = require('express');
 const multer = require('multer');
-const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-
+const { Marp } = require('@marp-team/marp-core');
+const { debuggerMiddleware } = require('./debugger');
+const puppeteer = require('puppeteer');
 const app = express();
 const port = 3000;
 
-// Configuração do multer para upload de arquivos
 const upload = multer({ dest: os.tmpdir() });
 
-// Middleware para permitir JSON
+// Import dos middlewares
 app.use(express.json());
+app.use(debuggerMiddleware);
 
-// Endpoint para converter markdown para PDF
-app.post('/convert', upload.single('markdown'), (req, res) => {
+// Converter router
+app.post('/', upload.single('markdown'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
-
+    
     const inputFile = req.file.path;
     const outputFile = path.join(os.tmpdir(), `${Date.now()}.pdf`);
+   
+    const handleErrorParseFile = (error) => {
+        console.error('Erro na conversão:', error);
+        fs.unlinkSync(inputFile); // Limpar o arquivo de entrada em caso de erro
+        res.status(500).json({ error: 'Erro na conversão do arquivo' });
+    }
 
-    // Comando para converter usando Marp
-    const command = `marp "${inputFile}" --pdf -o "${outputFile}"`;
-
-    exec(command, (error, stdout, stderr) => {
-        // Limpar arquivo de entrada
-        fs.unlinkSync(inputFile);
-
-        if (error) {
-            console.error('Erro na conversão:', error);
-            return res.status(500).json({ error: 'Erro na conversão do arquivo' });
-        }
-
-        // Enviar o arquivo PDF
+    const downloadPdfFile = () => {
         res.download(outputFile, 'converted.pdf', (err) => {
-            // Limpar arquivo de saída após o download
             fs.unlinkSync(outputFile);
             if (err) {
                 console.error('Erro ao enviar arquivo:', err);
             }
         });
-    });
+    }
+
+    const parsePdfFile = async () => {
+        try {
+            const markdown = fs.readFileSync(inputFile, 'utf-8');
+            const marp = new Marp();
+            const { html, css } = marp.render(markdown);
+            const browser = await puppeteer.launch({ headless: 'new' });
+            const page = await browser.newPage();
+            await page.setContent(`<!DOCTYPE html><html><head><style>${css}</style></head><body>${html}</body></html>`);
+            await page.pdf({ path: outputFile, format: 'A4' });
+            await browser.close();
+            fs.unlinkSync(inputFile);
+        } catch (error) {
+            handleErrorParseFile(error)
+        }
+    }
+    
+    await parsePdfFile();
+    downloadPdfFile();
 });
 
-// Rota de teste
+// Healthcheck route
 app.get('/', (req, res) => {
-    res.send('Servidor de conversão Markdown para PDF está rodando!');
+    res.send('Servidor de conversão Markdown para PDF está rodando');
 });
 
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
-}); 
+});
