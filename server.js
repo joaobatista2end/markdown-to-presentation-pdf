@@ -44,7 +44,12 @@ app.post('/', upload.single('markdown'), async (req, res) => {
             const markdown = fs.readFileSync(inputFile, 'utf-8');
             const marp = new Marp();
             const { html, css } = marp.render(markdown);
-            const browser = await puppeteer.launch({ headless: 'new' });
+            console.log('Puppeteer executablePath:', puppeteer.executablePath()); // Adicione esta linha
+            const browser = await puppeteer.launch({
+                headless: 'new',
+                executablePath: process.env.CHROME_PATH, // Garanta que está usando a variável de ambiente
+                args: process.env.CHROME_LAUNCH_OPTIONS ? process.env.CHROME_LAUNCH_OPTIONS.split(' ') : []
+            });
             const page = await browser.newPage();
             await page.setContent(`<!DOCTYPE html><html><head><style>${css}</style></head><body>${html}</body></html>`);
             await page.pdf({ path: outputFile, format: 'A4' });

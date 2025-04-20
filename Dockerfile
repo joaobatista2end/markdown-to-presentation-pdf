@@ -10,10 +10,7 @@ RUN apk add --no-cache \
     font-noto-extra \
     && rm -rf /var/cache/apk/*
 
-# Install Marp CLI and its dependencies with specific versions
-RUN npm install -g \
-    @marp-team/marp-core@3.6.0 \
-    @marp-team/marp-cli@2.4.0
+RUN which chromium-browser
 
 # Set Chrome path and flags for Marp with increased timeout and memory settings
 ENV CHROME_PATH=/usr/bin/chromium-browser
