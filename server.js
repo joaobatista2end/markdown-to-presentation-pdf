@@ -76,7 +76,7 @@ app.post('/mermaid', upload.single('file'), async (req, res) => {
     const outputFile = path.join(os.tmpdir(), outputFileName);
 
     try {
-        // Configurações adicionais para o mermaid-cli com qualidade melhorada
+        // Configurações adicionais para o mermaid-cli com resolução aumentada
         const mermaidConfig = {
             puppeteerConfig: {
                 timeout: 60000,
@@ -84,16 +84,21 @@ app.post('/mermaid', upload.single('file'), async (req, res) => {
                     '--no-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
-                    '--disable-setuid-sandbox'
-                ]
+                    '--disable-setuid-sandbox',
+                    '--force-device-scale-factor=2' // Força o DPI para 2x
+                ],
+                defaultViewport: {
+                    width: 1920,
+                    height: 1080,
+                    deviceScaleFactor: 2 // Aumenta a densidade de pixels
+                }
             },
             // Configurações específicas para melhorar a qualidade da imagem
             outputFormat: 'png',
             outputQuality: 100,
-            scale: 2, // Aumenta a resolução da imagem
             backgroundColor: 'white',
-            width: 1200, // Largura maior para melhor qualidade
-            height: 800, // Altura maior para melhor qualidade
+            width: 1920, // Aumenta a largura
+            height: 1080, // Aumenta a altura
             css: `
                 .mermaid {
                     font-family: Arial, sans-serif;
