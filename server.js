@@ -6,6 +6,7 @@ const os = require('os');
 const { Marp } = require('@marp-team/marp-core');
 const debuggerMiddleware = require('./debugger'); 
 const puppeteer = require('puppeteer');
+const { exec } = require('child_process');
 const app = express();
 const port = 3000;
 
@@ -62,6 +63,84 @@ app.post('/', upload.single('markdown'), async (req, res) => {
     
     await parsePdfFile();
     downloadPdfFile();
+});
+
+// Endpoint para converter Mermaid em PNG
+app.post('/mermaid', express.json(), async (req, res) => {
+    try {
+        const { diagram } = req.body;
+        
+        if (!diagram) {
+            return res.status(400).json({ error: 'Diagrama Mermaid não fornecido' });
+        }
+
+        const outputFile = path.join(os.tmpdir(), `${Date.now()}.png`);
+        
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            executablePath: process.env.CHROME_PATH,
+            args: process.env.CHROME_LAUNCH_OPTIONS ? process.env.CHROME_LAUNCH_OPTIONS.split(' ') : []
+        });
+
+        const page = await browser.newPage();
+        
+        // Carregar o Mermaid.js
+        await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js' });
+        
+        // Configurar o Mermaid
+        await page.evaluate(() => {
+            mermaid.initialize({ 
+                startOnLoad: true,
+                theme: 'default'
+            });
+        });
+
+        // Criar o HTML com o diagrama
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <style>
+                        body { margin: 0; padding: 20px; }
+                        .mermaid { display: flex; justify-content: center; }
+                    </style>
+                </head>
+                <body>
+                    <div class="mermaid">
+                        ${diagram}
+                    </div>
+                </body>
+            </html>
+        `;
+
+        await page.setContent(html);
+        
+        // Esperar o diagrama ser renderizado
+        await page.waitForFunction(() => {
+            const svg = document.querySelector('.mermaid svg');
+            return svg && svg.getAttribute('data-processed') === 'true';
+        });
+
+        // Capturar o elemento do diagrama
+        const element = await page.$('.mermaid');
+        await element.screenshot({
+            path: outputFile,
+            omitBackground: true
+        });
+
+        await browser.close();
+
+        // Enviar o arquivo PNG
+        res.download(outputFile, 'diagram.png', (err) => {
+            fs.unlinkSync(outputFile);
+            if (err) {
+                console.error('Erro ao enviar arquivo:', err);
+            }
+        });
+    } catch (error) {
+        console.error('Erro no processamento:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
 });
 
 // Healthcheck route
