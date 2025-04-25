@@ -71,26 +71,67 @@ app.post('/mermaid', upload.single('file'), async (req, res) => {
         return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const inputFile = req.file.path;  // Caminho temporário do arquivo .mmd
-    const outputFileName = `${Date.now()}.png`;  // Nome do arquivo de saída
-    const outputFile = path.join(os.tmpdir(), outputFileName);  // Caminho para salvar o arquivo de saída
+    const inputFile = req.file.path;
+    const outputFileName = `${Date.now()}.png`;
+    const outputFile = path.join(os.tmpdir(), outputFileName);
 
     try {
-        // Chama o mermaid passando o caminho do arquivo .mmd e o caminho de saída
-        await mermaid(inputFile, outputFile);
+        // Configurações adicionais para o mermaid-cli
+        const mermaidConfig = {
+            puppeteerConfig: {
+                timeout: 60000, // Aumenta o timeout para 60 segundos
+                args: [
+                    '--no-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--disable-setuid-sandbox'
+                ]
+            }
+        };
+
+        // Chama o mermaid com as configurações personalizadas
+        await mermaid(inputFile, outputFile, mermaidConfig);
 
         // Envia o arquivo gerado de volta para o cliente
         res.download(outputFile, outputFileName, (err) => {
-            fs.unlinkSync(outputFile);  // Apaga o arquivo de saída após o envio
-            fs.unlinkSync(inputFile);  // Apaga o arquivo de entrada após o uso
+            // Limpeza dos arquivos temporários
+            try {
+                if (fs.existsSync(outputFile)) {
+                    fs.unlinkSync(outputFile);
+                }
+                if (fs.existsSync(inputFile)) {
+                    fs.unlinkSync(inputFile);
+                }
+            } catch (cleanupError) {
+                console.error('Erro ao limpar arquivos temporários:', cleanupError);
+            }
+            
             if (err) {
                 console.error('Erro ao enviar o arquivo:', err);
             }
         });
     } catch (error) {
         console.error('Erro ao gerar o diagrama:', error);
-        res.status(500).json({ error: 'Erro ao gerar o diagrama Mermaid' });
+        
+        // Limpeza em caso de erro
+        try {
+            if (fs.existsSync(inputFile)) {
+                fs.unlinkSync(inputFile);
+            }
+        } catch (cleanupError) {
+            console.error('Erro ao limpar arquivo temporário:', cleanupError);
+        }
+
+        // Resposta de erro mais detalhada
+        res.status(500).json({ 
+            error: 'Erro ao gerar o diagrama Mermaid',
+            details: error.message
+        });
     }
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
 });
 
 app.listen(port, () => {
