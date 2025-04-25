@@ -1,15 +1,15 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const { Marp } = require('@marp-team/marp-core');
-const debuggerMiddleware = require('./debugger'); 
-const puppeteer = require('puppeteer');
-const { exec } = require('child_process');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { Marp } from '@marp-team/marp-core';
+import { debuggerMiddleware } from './debugger.js';  // Atualize o caminho se necessário
+import puppeteer from 'puppeteer';
+import { run as mermaid } from '@mermaid-js/mermaid-cli';
+
 const app = express();
 const port = 3000;
-
 const upload = multer({ dest: os.tmpdir() });
 
 // Import dos middlewares
@@ -21,10 +21,10 @@ app.post('/', upload.single('markdown'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
-    
+
     const inputFile = req.file.path;
     const outputFile = path.join(os.tmpdir(), `${Date.now()}.pdf`);
-   
+
     const handleErrorParseFile = (error) => {
         console.error('Erro na conversão:', error);
         fs.unlinkSync(inputFile); // Limpar o arquivo de entrada em caso de erro
@@ -60,92 +60,37 @@ app.post('/', upload.single('markdown'), async (req, res) => {
             handleErrorParseFile(error)
         }
     }
-    
+
     await parsePdfFile();
     downloadPdfFile();
 });
 
-// Endpoint para converter Mermaid em PNG
-app.post('/mermaid', express.json(), async (req, res) => {
+
+app.post('/mermaid', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    }
+
+    const inputFile = req.file.path;  // Caminho temporário do arquivo .mmd
+    const outputFileName = `${Date.now()}.png`;  // Nome do arquivo de saída
+    const outputFile = path.join(os.tmpdir(), outputFileName);  // Caminho para salvar o arquivo de saída
+
     try {
-        const { diagram } = req.body;
-        
-        if (!diagram) {
-            return res.status(400).json({ error: 'Diagrama Mermaid não fornecido' });
-        }
+        // Chama o mermaid passando o caminho do arquivo .mmd e o caminho de saída
+        await mermaid(inputFile, outputFile);
 
-        const outputFile = path.join(os.tmpdir(), `${Date.now()}.png`);
-        
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            executablePath: process.env.CHROME_PATH,
-            args: process.env.CHROME_LAUNCH_OPTIONS ? process.env.CHROME_LAUNCH_OPTIONS.split(' ') : []
-        });
-
-        const page = await browser.newPage();
-        
-        // Carregar o Mermaid.js
-        await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js' });
-        
-        // Configurar o Mermaid
-        await page.evaluate(() => {
-            mermaid.initialize({ 
-                startOnLoad: true,
-                theme: 'default'
-            });
-        });
-
-        // Criar o HTML com o diagrama
-        const html = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <style>
-                        body { margin: 0; padding: 20px; }
-                        .mermaid { display: flex; justify-content: center; }
-                    </style>
-                </head>
-                <body>
-                    <div class="mermaid">
-                        ${diagram}
-                    </div>
-                </body>
-            </html>
-        `;
-
-        await page.setContent(html);
-        
-        // Esperar o diagrama ser renderizado
-        await page.waitForFunction(() => {
-            const svg = document.querySelector('.mermaid svg');
-            return svg && svg.getAttribute('data-processed') === 'true';
-        });
-
-        // Capturar o elemento do diagrama
-        const element = await page.$('.mermaid');
-        await element.screenshot({
-            path: outputFile,
-            omitBackground: true
-        });
-
-        await browser.close();
-
-        // Enviar o arquivo PNG
-        res.download(outputFile, 'diagram.png', (err) => {
-            fs.unlinkSync(outputFile);
+        // Envia o arquivo gerado de volta para o cliente
+        res.download(outputFile, outputFileName, (err) => {
+            fs.unlinkSync(outputFile);  // Apaga o arquivo de saída após o envio
+            fs.unlinkSync(inputFile);  // Apaga o arquivo de entrada após o uso
             if (err) {
-                console.error('Erro ao enviar arquivo:', err);
+                console.error('Erro ao enviar o arquivo:', err);
             }
         });
     } catch (error) {
-        console.error('Erro no processamento:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('Erro ao gerar o diagrama:', error);
+        res.status(500).json({ error: 'Erro ao gerar o diagrama Mermaid' });
     }
-});
-
-// Healthcheck route
-app.get('/', (req, res) => {
-    res.send('Servidor de conversão Markdown para PDF está rodando');
 });
 
 app.listen(port, () => {
